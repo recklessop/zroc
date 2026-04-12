@@ -1,0 +1,6 @@
+# vCenter SDK
+pyvmomi==8.0.3.0.1
+
+# No external Prometheus client needed — we render text format ourselves.
+# If you prefer the official client library, uncomment:
+# prometheus-client==0.21.1
