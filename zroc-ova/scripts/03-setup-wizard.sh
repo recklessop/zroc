@@ -3,7 +3,10 @@
 set -euo pipefail
 echo "==> [03-setup-wizard] Installing setup wizard"
 
-install -m 0755 /tmp/zroc-setup /usr/local/bin/zroc-setup
+# The Packer file provisioner copies overlays/ to /tmp/overlays/
+# Mirror the full directory tree into place
+cp -r /tmp/overlays/usr /
+chmod 0755 /usr/local/bin/zroc-setup
 
 cat > /etc/systemd/system/zroc-firstboot.service << 'EOF'
 [Unit]

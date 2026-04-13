@@ -31,7 +31,7 @@ jobs:
           fi
           echo "version=$VERSION"   >> $GITHUB_OUTPUT
           echo "tag=v$VERSION"      >> $GITHUB_OUTPUT
-          echo "ova_name=zroc-appliance-${VERSION}-ubuntu-26.04-amd64.ova" >> $GITHUB_OUTPUT
+          echo "ova_name=zroc-appliance-${VERSION}-ubuntu-24.04-amd64.ova" >> $GITHUB_OUTPUT
 
       - name: Install Packer
         run: |
@@ -42,7 +42,7 @@ jobs:
 
       - name: Packer init
         working-directory: packer
-        run: packer init ubuntu-2604.pkr.hcl
+        run: packer init ubuntu-2404.pkr.hcl
 
       - name: Validate
         working-directory: packer
@@ -50,7 +50,7 @@ jobs:
           packer validate \
             -var "vm_version=${{ steps.ver.outputs.version }}" \
             -var-file=variables.pkrvars.hcl \
-            ubuntu-2604.pkr.hcl
+            ubuntu-2404.pkr.hcl
 
       - name: Build OVA
         working-directory: packer
@@ -62,7 +62,7 @@ jobs:
             -var "vm_version=${{ steps.ver.outputs.version }}" \
             -var "headless=true" \
             -var-file=variables.pkrvars.hcl \
-            ubuntu-2604.pkr.hcl
+            ubuntu-2404.pkr.hcl
 
       - name: Locate OVA
         id: ova

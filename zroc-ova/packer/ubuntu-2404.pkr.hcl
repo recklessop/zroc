@@ -14,12 +14,12 @@ packer {
 
 variable "ubuntu_iso_url" {
   type    = string
-  default = "https://releases.ubuntu.com/26.04/ubuntu-26.04-live-server-amd64.iso"
+  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-live-server-amd64.iso"
 }
 
 variable "ubuntu_iso_checksum" {
   type    = string
-  default = "file:https://releases.ubuntu.com/26.04/SHA256SUMS"
+  default = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
 }
 
 variable "vm_name" {
@@ -57,46 +57,46 @@ variable "headless" {
   default = true
 }
 
-source "vmware-iso" "ubuntu2604" {
-  vm_name          = "${var.vm_name}-${var.vm_version}"
-  guest_os_type    = "ubuntu-64"
-  headless         = var.headless
-  iso_url          = var.ubuntu_iso_url
-  iso_checksum     = var.ubuntu_iso_checksum
-  disk_size        = var.disk_size_mb
-  disk_adapter_type = "pvscsi"
-  memory           = var.memory_mb
-  cpus             = var.cpus
-  network_adapter_type = "vmxnet3"
-  network              = "nat"
-  disk_type_id = 0
-  http_directory = "http"
-  http_port_min  = 8100
-  http_port_max  = 8199
-  boot_wait = "5s"
+source "vmware-iso" "ubuntu2404" {
+  vm_name               = "${var.vm_name}-${var.vm_version}"
+  guest_os_type         = "ubuntu-64"
+  headless              = var.headless
+  iso_url               = var.ubuntu_iso_url
+  iso_checksum          = var.ubuntu_iso_checksum
+  disk_size             = var.disk_size_mb
+  disk_adapter_type     = "pvscsi"
+  memory                = var.memory_mb
+  cpus                  = var.cpus
+  network_adapter_type  = "vmxnet3"
+  network               = "nat"
+  disk_type_id          = 0
+  http_directory        = "http"
+  http_port_min         = 8100
+  http_port_max         = 8199
+  boot_wait             = "5s"
   boot_command = [
     "e<wait>",
     "<down><down><down><end>",
     " autoinstall ds=nocloud-net;seedfrom=http://{{.HTTPIP}}:{{.HTTPPort}}/",
     "<f10><wait30s>",
   ]
-  ssh_username     = "zroc"
-  ssh_password     = "zroc-setup-temp"
-  ssh_timeout      = "30m"
-  ssh_port         = 22
-  shutdown_command = "echo 'zroc-setup-temp' | sudo -S shutdown -P now"
-  output_directory = "${var.output_dir}/vmware"
-  skip_export      = false
-  format           = "ovf"
+  ssh_username          = "zroc"
+  ssh_password          = "zroc-setup-temp"
+  ssh_timeout           = "30m"
+  ssh_port              = 22
+  shutdown_command      = "echo 'zroc-setup-temp' | sudo -S shutdown -P now"
+  output_directory      = "${var.output_dir}/vmware"
+  skip_export           = false
+  format                = "ovf"
   vmx_data = {
-    "virtualHW.version"     = "19"
-    "tools.syncTime"        = "TRUE"
-    "annotation"            = "zROC Appliance v${var.vm_version}"
-    "guestOS"               = "ubuntu-64"
+    "virtualHW.version" = "19"
+    "tools.syncTime"    = "TRUE"
+    "annotation"        = "zROC Appliance v${var.vm_version}"
+    "guestOS"           = "ubuntu-64"
   }
 }
 
-source "qemu" "ubuntu2604" {
+source "qemu" "ubuntu2404" {
   vm_name          = "${var.vm_name}-${var.vm_version}"
   iso_url          = var.ubuntu_iso_url
   iso_checksum     = var.ubuntu_iso_checksum
@@ -109,7 +109,7 @@ source "qemu" "ubuntu2604" {
   http_directory   = "http"
   http_port_min    = 8100
   http_port_max    = 8199
-  boot_wait = "5s"
+  boot_wait        = "5s"
   boot_command = [
     "e<wait>",
     "<down><down><down><end>",
@@ -125,12 +125,18 @@ source "qemu" "ubuntu2604" {
 }
 
 build {
-  name = "zroc-appliance"
-  sources = ["source.vmware-iso.ubuntu2604"]
+  name    = "zroc-appliance"
+  sources = ["source.vmware-iso.ubuntu2404"]
+
+  # Copy overlay files (setup wizard, etc.) into the VM before provisioning
+  provisioner "file" {
+    source      = "../overlays/"
+    destination = "/tmp/overlays/"
+  }
 
   provisioner "shell" {
-    script           = "../scripts/00-base.sh"
-    execute_command  = "echo 'zroc-setup-temp' | sudo -S bash {{.Path}}"
+    script            = "../scripts/00-base.sh"
+    execute_command   = "echo 'zroc-setup-temp' | sudo -S bash {{.Path}}"
     expect_disconnect = true
   }
 
@@ -161,12 +167,12 @@ build {
   }
 
   post-processor "shell-local" {
-    only           = ["vmware-iso.ubuntu2604"]
+    only = ["vmware-iso.ubuntu2404"]
     inline = [
       "cd ${var.output_dir}/vmware",
-      "ovftool --compress=9 *.ovf ../${var.vm_name}-${var.vm_version}-ubuntu-26.04-amd64.ova",
+      "ovftool --compress=9 *.ovf ../${var.vm_name}-${var.vm_version}-ubuntu-24.04-amd64.ova",
       "cd ..",
-      "sha256sum ${var.vm_name}-${var.vm_version}-ubuntu-26.04-amd64.ova > ${var.vm_name}-${var.vm_version}-ubuntu-26.04-amd64.ova.sha256",
+      "sha256sum ${var.vm_name}-${var.vm_version}-ubuntu-24.04-amd64.ova > ${var.vm_name}-${var.vm_version}-ubuntu-24.04-amd64.ova.sha256",
       "echo 'OVA packaged successfully'",
     ]
   }

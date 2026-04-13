@@ -1,8 +1,8 @@
 # zroc-ova/packer/variables.pkrvars.hcl
 vm_version = "1.0.0"
 
-ubuntu_iso_url      = "https://releases.ubuntu.com/26.04/ubuntu-26.04-live-server-amd64.iso"
-ubuntu_iso_checksum = "file:https://releases.ubuntu.com/26.04/SHA256SUMS"
+ubuntu_iso_url      = "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-live-server-amd64.iso"
+ubuntu_iso_checksum = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
 
 memory_mb    = 8192
 cpus         = 4
