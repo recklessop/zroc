@@ -4,7 +4,7 @@ set -euo pipefail
 echo "==> [02-zroc] Setting up zROC installation"
 
 INSTALL_DIR=/opt/zroc
-ZROC_REPO="https://github.com/ZertoPublic/zroc.git"
+ZROC_REPO="https://github.com/recklessop/zroc.git"
 
 git clone --depth=1 "$ZROC_REPO" "$INSTALL_DIR"
 

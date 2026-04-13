@@ -23,7 +23,7 @@ This image includes a Node.js Express backend that handles:
 ## Quick start — full stack
 
 ```bash
-git clone https://github.com/ZertoPublic/zroc.git
+git clone https://github.com/recklessop/zroc.git
 cd zroc
 cp .env.example .env
 # Edit .env with your ZVM credentials and secrets
@@ -56,9 +56,9 @@ Then visit `https://<your-host>` — on first access run through the setup wizar
 
 ## Source
 
-- UI & backend: [github.com/ZertoPublic/zroc](https://github.com/ZertoPublic/zroc)
+- UI & backend: [github.com/recklessop/zroc](https://github.com/recklessop/zroc)
 - Zerto Exporter: [github.com/recklessop/Zerto_Exporter](https://github.com/recklessop/Zerto_Exporter)
-- OVA Appliance: [github.com/ZertoPublic/zroc-ova](https://github.com/ZertoPublic/zroc-ova)
+- OVA Appliance: [github.com/recklessop/zroc-ova](https://github.com/recklessop/zroc-ova)
 
 ## License
 

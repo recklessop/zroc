@@ -7,7 +7,7 @@ Packer build definitions and provisioner scripts for the **zROC Ubuntu 26.04 LTS
 A 100 GB thin-provisioned VMware OVA containing:
 - Ubuntu Server 26.04 LTS
 - Docker Engine + Compose plugin
-- Full zROC stack (cloned from ZertoPublic/zroc)
+- Full zROC stack (cloned from recklessop/zroc)
 - Interactive first-boot setup wizard (`zroc-setup`)
 - UFW firewall pre-configured (22, 80, 443, 3000)
 - VMware guest tools (`open-vm-tools`)
@@ -16,7 +16,7 @@ A 100 GB thin-provisioned VMware OVA containing:
 ## Build
 
 ```bash
-git clone https://github.com/ZertoPublic/zroc-ova.git
+git clone https://github.com/recklessop/zroc-ova.git
 cd zroc-ova
 make init
 make validate
