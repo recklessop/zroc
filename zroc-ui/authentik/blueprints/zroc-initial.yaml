@@ -1,0 +1,110 @@
+version: 1
+metadata:
+  name: zROC Initial Configuration
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+
+entries:
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: zroc-admins
+    attrs:
+      name: zroc-admins
+
+  - model: authentik_core.group
+    state: present
+    identifiers:
+      name: zroc-viewers
+    attrs:
+      name: zroc-viewers
+
+  - model: authentik_providers_oauth2.scopemapping
+    state: present
+    identifiers:
+      managed: goauthentik.io/providers/oauth2/scope-zroc-groups
+    attrs:
+      managed: goauthentik.io/providers/oauth2/scope-zroc-groups
+      name: "zROC Groups Scope"
+      scope_name: groups
+      expression: |
+        return [group.name for group in request.user.ak_groups.all()]
+
+  - model: authentik_providers_oauth2.oauth2provider
+    state: present
+    identifiers:
+      name: zROC Dashboard Provider
+    attrs:
+      name: zROC Dashboard Provider
+      client_type: confidential
+      client_id: !Env ZROC_OIDC_CLIENT_ID
+      client_secret: !Env ZROC_OIDC_CLIENT_SECRET
+      authorization_flow: !Find [authentik_flows.flow, [name, default-provider-authorization-implicit-consent]]
+      redirect_uris: !Env ZROC_PUBLIC_URL
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      access_code_validity: minutes=1
+      access_token_validity: hours=1
+      refresh_token_validity: days=30
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-zroc-groups]]
+
+  - model: authentik_core.application
+    state: present
+    identifiers:
+      slug: zroc-dashboard
+    attrs:
+      name: zROC Dashboard
+      slug: zroc-dashboard
+      provider: !Find [authentik_providers_oauth2.oauth2provider, [name, zROC Dashboard Provider]]
+      meta_launch_url: !Env ZROC_PUBLIC_URL
+      meta_description: Zerto Resiliency Observation Console
+      policy_engine_mode: any
+
+  - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+    state: present
+    identifiers:
+      name: zroc-totp-validation
+    attrs:
+      name: zroc-totp-validation
+      device_classes:
+        - totp
+        - static
+      not_configured_action: configure
+      configuration_stages:
+        - !Find [authentik_stages_authenticator_totp.authenticatortotpstage, [name, default-authenticator-totp-setup]]
+
+  - model: authentik_flows.flowstagebinding
+    state: present
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, zroc-totp-validation]]
+    attrs:
+      target: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, zroc-totp-validation]]
+      order: 30
+      evaluate_on_plan: true
+      re_evaluate_policies: false
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: zroc-service-account
+    attrs:
+      username: zroc-service-account
+      name: zROC Service Account
+      type: service_account
+      is_active: true
+
+  - model: authentik_core.token
+    state: present
+    identifiers:
+      identifier: zroc-ui-admin-token
+    attrs:
+      identifier: zroc-ui-admin-token
+      user: !Find [authentik_core.user, [username, zroc-service-account]]
+      intent: api
+      description: "Used by zROC UI backend for user management"
+      expiring: false

@@ -1,0 +1,82 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+
+  source:
+    id: ubuntu-server-minimal
+
+  storage:
+    layout:
+      name: direct
+    config:
+      - type: disk
+        id: disk0
+        match:
+          size: largest
+        ptable: gpt
+        wipe: superblock-recursive
+        preserve: false
+        grub_device: true
+      - type: partition
+        id: part-efi
+        device: disk0
+        size: 512M
+        flag: boot
+        number: 1
+        preserve: false
+      - type: format
+        id: fmt-efi
+        volume: part-efi
+        fstype: fat32
+        preserve: false
+      - type: partition
+        id: part-root
+        device: disk0
+        size: -1
+        number: 2
+        preserve: false
+      - type: format
+        id: fmt-root
+        volume: part-root
+        fstype: ext4
+        preserve: false
+      - type: mount
+        id: mnt-root
+        device: fmt-root
+        path: /
+      - type: mount
+        id: mnt-efi
+        device: fmt-efi
+        path: /boot/efi
+
+  identity:
+    hostname: zroc-appliance
+    username: zroc
+    password: "$6$rounds=4096$packer$xKDMK6dLB2.8PZnJnXGpYQ9o0CWbEe4s7T5JY3bVq1ZQ2RQ6y7dAjH4wqpVLBkHPHU/CuW7.8SsLQ6TYe1"
+
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  packages:
+    - curl
+    - wget
+    - git
+    - vim
+    - htop
+    - net-tools
+    - open-vm-tools
+    - ca-certificates
+    - gnupg
+    - lsb-release
+    - unattended-upgrades
+    - apt-transport-https
+
+  late-commands:
+    - echo 'zroc ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/zroc-packer
+    - chmod 440 /target/etc/sudoers.d/zroc-packer
+    - echo 'net.ipv6.conf.all.disable_ipv6 = 1' >> /target/etc/sysctl.d/99-zroc.conf
