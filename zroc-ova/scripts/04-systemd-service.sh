@@ -6,7 +6,7 @@ echo "==> [04-systemd-service] Installing zroc.service"
 cat > /etc/systemd/system/zroc.service << 'EOF'
 [Unit]
 Description=zROC Observability Stack
-Documentation=https://github.com/ZertoPublic/zroc
+Documentation=https://github.com/recklessop/zroc
 After=docker.service network-online.target
 Requires=docker.service
 Wants=network-online.target

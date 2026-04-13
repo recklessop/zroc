@@ -18,7 +18,7 @@ zROC is a Docker Compose stack that collects Zerto metrics via the ZVM REST API 
 ## Quick Start
 
 ```bash
-git clone https://github.com/ZertoPublic/zroc.git
+git clone https://github.com/recklessop/zroc.git
 cd zroc
 cp .env.example .env
 # Edit .env with your ZVM credentials and secrets
