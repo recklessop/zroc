@@ -29,6 +29,7 @@ dd if=/dev/zero of=/ZERO bs=4M status=progress 2>/dev/null || true
 rm -f /ZERO
 sync
 
+# Zero swap if present (appliance is built without swap by default)
 SWAP_DEV=$(swapon --show=NAME --noheadings 2>/dev/null | head -1)
 if [[ -n "$SWAP_DEV" ]]; then
   swapoff "$SWAP_DEV"

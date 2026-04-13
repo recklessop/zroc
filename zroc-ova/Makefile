@@ -1,64 +1,55 @@
-# zroc-ova/Makefile
+# zroc-ova/Makefile — Build and manage zROC appliance images
 VERSION     ?= 1.0.0
 PACKER_DIR   = packer
 OUTPUT_DIR   = output
-OVA_NAME     = zroc-appliance-$(VERSION)-ubuntu-26.04-amd64.ova
+VM_NAME      = zroc-appliance
+ARTIFACT_PFX = $(VM_NAME)-$(VERSION)-ubuntu-24.04-amd64
 
-.PHONY: all init validate build build-qemu package checksum clean help
+.PHONY: all build validate clean init docker-build docker-push help
 
-all: build package checksum
+all: build ## Build everything (default)
 
-init:
-	cd $(PACKER_DIR) && packer init ubuntu-2604.pkr.hcl
-
-validate: init
-	cd $(PACKER_DIR) && packer validate \
-		-var "vm_version=$(VERSION)" \
-		-var-file=variables.pkrvars.hcl \
-		ubuntu-2604.pkr.hcl
-	@echo "✓ Template valid"
-
-build: init
-	@echo "==> Building zROC OVA v$(VERSION) with VMware builder"
-	cd $(PACKER_DIR) && PACKER_LOG=1 packer build \
-		-var "vm_version=$(VERSION)" \
-		-var "headless=true" \
-		-var-file=variables.pkrvars.hcl \
-		ubuntu-2604.pkr.hcl
-	@echo "✓ Build complete"
-
-build-qemu: init
-	@echo "==> Building zROC image v$(VERSION) with QEMU builder"
-	cd $(PACKER_DIR) && PACKER_LOG=1 packer build \
-		-only="qemu.ubuntu2604" \
-		-var "vm_version=$(VERSION)" \
-		-var-file=variables.pkrvars.hcl \
-		ubuntu-2604.pkr.hcl
-
-package:
-	@echo "==> Packaging OVF to OVA"
-	@OVF=$$(find $(OUTPUT_DIR)/vmware -name "*.ovf" | head -1); \
-	if [ -z "$$OVF" ]; then echo "No OVF found in $(OUTPUT_DIR)/vmware"; exit 1; fi; \
-	ovftool --compress=9 "$$OVF" "$(OUTPUT_DIR)/$(OVA_NAME)"
-	@echo "✓ OVA: $(OUTPUT_DIR)/$(OVA_NAME)"
-
-checksum:
-	@cd $(OUTPUT_DIR) && sha256sum $(OVA_NAME) > $(OVA_NAME).sha256
-	@echo "✓ Checksum: $(OUTPUT_DIR)/$(OVA_NAME).sha256"
-	@cat $(OUTPUT_DIR)/$(OVA_NAME).sha256
-
-verify:
-	@cd $(OUTPUT_DIR) && sha256sum -c $(OVA_NAME).sha256
-
-clean:
-	rm -rf $(OUTPUT_DIR)
-	@echo "✓ Output directory cleaned"
-
-help:
+help: ## Show available targets
 	@echo ""
 	@echo "  zroc-ova build targets"
-	@echo "  ──────────────────────────────────────────"
-	@grep -E '^## ' Makefile | sed 's/## /  make /'
+	@echo "  ────────────────────────────────────────"
+	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  make %-15s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  VERSION=$(VERSION)  (override: make build VERSION=1.1.0)"
 	@echo ""
+
+init: ## Install required Packer plugins
+	cd $(PACKER_DIR) && packer init ubuntu-2404.pkr.hcl
+
+validate: ## Validate Packer config
+	cd $(PACKER_DIR) && packer validate \
+		-var "vm_version=$(VERSION)" \
+		-var-file=variables.pkrvars.hcl \
+		ubuntu-2404.pkr.hcl
+
+build: validate ## Build OVA + qcow2 appliance images
+	cd $(PACKER_DIR) && packer build \
+		-var "vm_version=$(VERSION)" \
+		-var-file=variables.pkrvars.hcl \
+		ubuntu-2404.pkr.hcl
+	@echo ""
+	@echo "Artifacts:"
+	@ls -lh $(OUTPUT_DIR)/$(ARTIFACT_PFX).ova $(OUTPUT_DIR)/$(ARTIFACT_PFX).qcow2 2>/dev/null
+	@echo ""
+	@cat $(OUTPUT_DIR)/$(ARTIFACT_PFX).ova.sha256 $(OUTPUT_DIR)/$(ARTIFACT_PFX).qcow2.sha256 2>/dev/null
+
+clean: ## Remove all build artifacts
+	rm -rf $(OUTPUT_DIR)/qemu $(OUTPUT_DIR)/$(VM_NAME)-*
+	@echo "Build artifacts cleaned"
+
+docker-build: ## Build zroc-ui Docker image
+	cd ../zroc-ui && docker build --network=host \
+		-t recklessop/zroc-ui:stable \
+		-t recklessop/zroc-ui:$(VERSION) \
+		-t recklessop/zroc-ui:latest \
+		.
+
+docker-push: ## Push zroc-ui Docker image to Docker Hub
+	docker push recklessop/zroc-ui:stable
+	docker push recklessop/zroc-ui:$(VERSION)
+	docker push recklessop/zroc-ui:latest

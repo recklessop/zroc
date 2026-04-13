@@ -10,28 +10,19 @@ autoinstall:
     id: ubuntu-server-minimal
 
   storage:
-    layout:
-      name: direct
     config:
       - type: disk
         id: disk0
-        match:
-          size: largest
         ptable: gpt
         wipe: superblock-recursive
         preserve: false
         grub_device: true
       - type: partition
-        id: part-efi
+        id: part-bios
         device: disk0
-        size: 512M
-        flag: boot
+        size: 1M
+        flag: bios_grub
         number: 1
-        preserve: false
-      - type: format
-        id: fmt-efi
-        volume: part-efi
-        fstype: fat32
         preserve: false
       - type: partition
         id: part-root
@@ -48,10 +39,8 @@ autoinstall:
         id: mnt-root
         device: fmt-root
         path: /
-      - type: mount
-        id: mnt-efi
-        device: fmt-efi
-        path: /boot/efi
+    swap:
+      size: 0
 
   identity:
     hostname: zroc-appliance

@@ -8,29 +8,23 @@ echo "==> [03-setup-wizard] Installing setup wizard"
 cp -r /tmp/overlays/usr /
 chmod 0755 /usr/local/bin/zroc-setup
 
-cat > /etc/systemd/system/zroc-firstboot.service << 'EOF'
-[Unit]
-Description=zROC First-Boot Setup Wizard
-After=network-online.target
-Wants=network-online.target
-ConditionPathExists=!/opt/zroc/.env
-
+# Override getty on tty1 to run the setup wizard on first boot.
+# Once .env exists the override is removed and normal getty resumes.
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat > /etc/systemd/system/getty@tty1.service.d/zroc-firstboot.conf << 'EOF'
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/bin/zroc-setup
+ExecStartPre=/bin/sh -c '[ ! -f /opt/zroc/.env ] || { rm -f /etc/systemd/system/getty@tty1.service.d/zroc-firstboot.conf && systemctl daemon-reload && exit 1; }'
+ExecStart=
+ExecStart=-/usr/local/bin/zroc-setup
 StandardInput=tty
-TTYPath=/dev/tty1
-StandardOutput=journal+console
-StandardError=journal+console
-TimeoutStartSec=0
-
-[Install]
-WantedBy=multi-user.target
+StandardOutput=tty
+StandardError=tty
+TTYVTDisallocate=yes
+Restart=always
+RestartSec=3
 EOF
 
 systemctl daemon-reload
-systemctl enable zroc-firstboot.service
 
 rm -f /etc/sudoers.d/zroc-packer
 cat > /etc/sudoers.d/zroc << 'EOF'
