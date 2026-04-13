@@ -37,6 +37,10 @@ _METRIC_HELP = {
         "gauge",
         "Virtual disk write latency in milliseconds (totalWriteLatency.average, mean across disk instances)",
     ),
+    "vcenter_vm_disk_provisioned_gb": (
+        "gauge",
+        "Total provisioned virtual disk capacity in GB (sum of all VirtualDisk devices)",
+    ),
 }
 
 # Maps our collector metric keys to Prometheus metric names
@@ -44,6 +48,7 @@ _METRIC_NAME_MAP = {
     "disk_write_iops":       "vcenter_vm_disk_write_iops",
     "disk_write_throughput": "vcenter_vm_disk_write_throughput_mbps",
     "disk_write_latency":    "vcenter_vm_disk_write_latency_ms",
+    "disk_provisioned_gb":   "vcenter_vm_disk_provisioned_gb",
 }
 
 

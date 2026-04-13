@@ -165,6 +165,18 @@ def _get_vm_labels(vm: vim.VirtualMachine) -> dict:
         }
 
 
+def _get_vm_provisioned_gb(vm: vim.VirtualMachine) -> float:
+    """Return total provisioned virtual disk capacity in GB for a VM."""
+    total_kb = 0
+    try:
+        for device in vm.config.hardware.device:
+            if isinstance(device, vim.vm.device.VirtualDisk):
+                total_kb += device.capacityInKB
+    except Exception as exc:
+        log.debug("Could not read disk capacity for VM %s: %s", vm._moId, exc)
+    return total_kb / (1024 * 1024)  # KB -> GB
+
+
 # ---------------------------------------------------------------------------
 # Performance counter ID cache
 # ---------------------------------------------------------------------------
@@ -236,6 +248,7 @@ def _parse_results(
     results: list,
     label_cache: dict[str, dict],
     label_to_counter_id: dict[str, int],
+    provisioned_gb_cache: Optional[dict[str, float]] = None,
 ) -> None:
     """Parse EntityMetric results and update the global MetricStore."""
     # Build reverse map: counter_id -> label
@@ -278,6 +291,9 @@ def _parse_results(
                 metrics[lbl] = total / 1024.0
             else:
                 metrics[lbl] = total
+
+        if provisioned_gb_cache:
+            metrics["disk_provisioned_gb"] = provisioned_gb_cache.get(moref, 0.0)
 
         store.update(moref, labels, metrics)
 
@@ -342,6 +358,9 @@ class VCenterCollector:
             if vm.runtime and vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn
         ]
         self._label_cache = {vm._moId: _get_vm_labels(vm) for vm in self._vm_cache}
+        self._provisioned_gb_cache: dict[str, float] = {
+            vm._moId: _get_vm_provisioned_gb(vm) for vm in self._vm_cache
+        }
         self._vm_cache_ts = now
         log.info("VM inventory: %d powered-on VMs", len(self._vm_cache))
 
@@ -378,7 +397,8 @@ class VCenterCollector:
                 results = _query_batch(
                     self._pm, batch, counter_id_list, config.PERF_INTERVAL_ID
                 )
-                _parse_results(results, self._label_cache, self._counter_ids)
+                _parse_results(results, self._label_cache, self._counter_ids,
+                               self._provisioned_gb_cache)
                 collected += len(batch)
             except Exception as exc:
                 errors += len(batch)
