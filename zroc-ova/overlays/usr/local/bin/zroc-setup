@@ -7,8 +7,8 @@ INSTALL_DIR=/opt/zroc
 ENV_FILE="$INSTALL_DIR/.env"
 CERTS_DIR="$INSTALL_DIR/certs"
 
-CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-RED='\033[0;31m';  BOLD='\033[1m';     RESET='\033[0m'
+CYAN=$'\033[0;36m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
+RED=$'\033[0;31m';  BOLD=$'\033[1m';     RESET=$'\033[0m'
 
 header() { echo -e "\n${CYAN}${BOLD}$*${RESET}"; }
 ok()     { echo -e "${GREEN}✓ $*${RESET}"; }
@@ -75,7 +75,16 @@ step "5/7  Zerto ZVM Configuration — Site 1"
 read -rp "ZVM Hostname or IP: " ZVM_HOST
 read -rp "ZVM Username [admin]: " ZVM_USER; ZVM_USER="${ZVM_USER:-admin}"
 read -rsp "ZVM Password: " ZVM_PASS; echo
-read -rp "vCenter Hostname (optional): " VCENTER_HOST
+read -rp "vCenter Hostname (optional, press Enter to skip): " VCENTER_HOST
+if [[ -n "$VCENTER_HOST" ]]; then
+  read -rp "vCenter Username [administrator@vsphere.local]: " VCENTER_USER
+  VCENTER_USER="${VCENTER_USER:-administrator@vsphere.local}"
+  read -rsp "vCenter Password: " VCENTER_PASS; echo
+  ok "vCenter configured: $VCENTER_HOST"
+else
+  VCENTER_USER=""
+  VCENTER_PASS=""
+fi
 
 # Step 5: Second site
 step "6/7  Second ZVM Site (optional)"
@@ -99,6 +108,8 @@ ZVM_HOST=$ZVM_HOST
 ZVM_USERNAME=$ZVM_USER
 ZVM_PASSWORD=$ZVM_PASS
 VCENTER_HOST=${VCENTER_HOST:-}
+VCENTER_USER=${VCENTER_USER:-}
+VCENTER_PASSWORD=${VCENTER_PASS:-}
 SESSION_SECRET=$SESSION_SECRET
 AUTHENTIK_PG_PASS=$AUTHENTIK_PG_PASS
 AUTHENTIK_SECRET_KEY=$AUTHENTIK_SECRET_KEY
