@@ -1,0 +1,47 @@
+{
+    admin off
+    auto_https off
+    log {
+        format json
+    }
+}
+
+:443 {
+    tls internal
+
+    handle /auth/* {
+        reverse_proxy authentik-server:9000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+
+    handle /outpost.goauthentik.io/* {
+        reverse_proxy authentik-server:9000 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+
+    handle {
+        reverse_proxy zroc-ui:3001 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {remote_host}
+            health_uri /api/health
+            health_interval 15s
+        }
+    }
+
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+}
+
+:80 {
+    redir https://{host}{uri} permanent
+}

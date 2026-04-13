@@ -1,111 +1,289 @@
-version: '3.7'
+---
+# zROC — Zerto Resiliency Observation Console
+# Full stack: Caddy (TLS), zroc-ui (React dashboard + Node backend), Authentik (SSO),
+# Prometheus, Grafana, Zerto Exporter, Watchtower (auto-updates).
+#
+# Configuration is driven entirely by /opt/zroc/.env — see zroc-setup wizard.
+
+version: '3.8'
 
 networks:
   front-tier:
   back-tier:
+  auth-tier:
 
 volumes:
-    prometheus_data: {}
-    grafana_data: {}
+  prometheus_data: {}
+  grafana_data:    {}
+  zroc_ui_data:    {}
+  authentik_postgres: {}
+  authentik_redis:    {}
+  authentik_media:    {}
+  caddy_data:         {}
 
 services:
 
-  # Exporter for ZVM/vCenter site 1
-  zertoexporter:
-    container_name: zvmexporter1
-    hostname: zvmexporter1 # this hostname will need to be set in the prometheus.yaml file as well
-    image: recklessop/zerto-exporter:stable
-    command: python python-node-exporter.py
+  # ── Reverse proxy / TLS termination ───────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: zroc-caddy
+    restart: unless-stopped
     ports:
-      - "9999:9999"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./zvmexporter/:/usr/src/app/logs/
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+    networks:
+      - front-tier
+    depends_on:
+      - zroc-ui
+      - authentik-server
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── zROC React UI + Node backend ──────────────────────────────────────────
+  zroc-ui:
+    image: recklessop/zroc-ui:stable
+    container_name: zroc-ui
+    restart: unless-stopped
     environment:
-      # Site 1 configuration settings
-      - VERIFY_SSL=False
-      - ZVM_HOST=192.168.50.60
-      - ZVM_PORT=443
-      - SCRAPE_SPEED=20 #how often should the exporter scrape the Zerto API
-      - CLIENT_ID=api-script
-      - CLIENT_SECRET=js51tDM8oappYUGRJBhF7bcsedNoHA5j
-      - LOGLEVEL=DEBUG
-      - VCENTER_HOST=vcenter.local
-      - VCENTER_USER=administrator@vsphere.local
-      - VCENTER_PASSWORD=password
-    networks:
-      - back-tier
-    restart: always
-
-  # This is used for a second ZVM / vCenter (maybe your DR site?)
-  #zertoexporter2:
-  #  container_name: zvmexporter2
-  #  hostname: zvmexporter2
-  #  image: recklessop/zerto-exporter:stable
-  #  command: python python-node-exporter.py
-  #  ports:
-  #    - "9998:9999" # if you add a third or more exporters change the port number before the :
-  #  volumes:
-  #    - ./zvmexporter/:/usr/src/app/logs/
-  #  environment:
-  #    # Site 2 configuration settings
-  #    - VERIFY_SSL=False
-  #    - ZVM_HOST=192.168.50.30
-  #    - ZVM_PORT=443
-  #    - SCRAPE_SPEED=20 #how often should the exporter scrape the Zerto API
-  #    - CLIENT_ID=api-script
-  #    - CLIENT_SECRET=x2aokKGPyS1O6LCW2uNqm2tbko2PLUSn
-  #    - LOGLEVEL=DEBUG
-  #    - VCENTER_HOST=192.168.50.20
-  #    - VCENTER_USER=administrator@vsphere.local
-  #    - VCENTER_PASSWORD=password
-  #  networks:
-  #    - back-tier
-  #  restart: always
-
-  prometheus:
-    image: prom/prometheus:v2.40.6
+      NODE_ENV:                production
+      PORT:                    "3001"
+      PROMETHEUS_URL:          http://zroc-prometheus:9090
+      AUTHENTIK_URL:           http://authentik-server:9000
+      AUTHENTIK_CLIENT_ID:     ${AUTHENTIK_CLIENT_ID}
+      AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET}
+      AUTHENTIK_ADMIN_TOKEN:   ${AUTHENTIK_ADMIN_TOKEN}
+      PUBLIC_URL:              ${PUBLIC_URL}
+      SESSION_SECRET:          ${SESSION_SECRET}
+      JWT_EXPIRY_HOURS:        "24"
+      AUTHENTIK_ADMIN_GROUP:   zroc-admins
+      AUTHENTIK_VIEWER_GROUP:  zroc-viewers
     volumes:
-      - ./prometheus/:/etc/prometheus/
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    ports:
-      - 9090:9090
+      - zroc_ui_data:/app/data
+    networks:
+      - front-tier
+      - back-tier
+      - auth-tier
+    depends_on:
+      - zroc-prometheus
+      - authentik-server
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── SSO — Authentik ───────────────────────────────────────────────────────
+  authentik-postgresql:
+    image: postgres:16-alpine
+    container_name: authentik-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       authentik
+      POSTGRES_USER:     authentik
+      POSTGRES_PASSWORD: ${AUTHENTIK_PG_PASS}
+    volumes:
+      - authentik_postgres:/var/lib/postgresql/data
+    networks:
+      - auth-tier
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authentik-redis:
+    image: redis:7-alpine
+    container_name: authentik-redis
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - authentik_redis:/data
+    networks:
+      - auth-tier
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST:                  authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST:             authentik-postgresql
+      AUTHENTIK_POSTGRESQL__USER:             authentik
+      AUTHENTIK_POSTGRESQL__NAME:             authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD:         ${AUTHENTIK_PG_PASS}
+      AUTHENTIK_SECRET_KEY:                   ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_DISABLE_STARTUP_ANALYTICS:    "true"
+      AUTHENTIK_ERROR_REPORTING__ENABLED:     "false"
+      ZROC_OIDC_CLIENT_ID:                    ${ZROC_OIDC_CLIENT_ID}
+      ZROC_OIDC_CLIENT_SECRET:                ${ZROC_OIDC_CLIENT_SECRET}
+      ZROC_PUBLIC_URL:                        ${ZROC_PUBLIC_URL}
+    volumes:
+      - authentik_media:/media
+      - ./zroc-ui/authentik/blueprints:/blueprints/custom:ro
+    networks:
+      - auth-tier
+      - front-tier
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST:          authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST:     authentik-postgresql
+      AUTHENTIK_POSTGRESQL__USER:     authentik
+      AUTHENTIK_POSTGRESQL__NAME:     authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_PG_PASS}
+      AUTHENTIK_SECRET_KEY:           ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_DISABLE_STARTUP_ANALYTICS: "true"
+    volumes:
+      - authentik_media:/media
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - auth-tier
+    depends_on:
+      - authentik-server
+    user: root
+
+  # ── Metrics — Zerto exporter ──────────────────────────────────────────────
+  zertoexporter:
+    image: recklessop/zerto-exporter:stable
+    container_name: zvmexporter1
+    hostname: zvmexporter1
+    restart: unless-stopped
+    volumes:
+      - ./zvmexporter:/usr/src/app/logs
+    environment:
+      VERIFY_SSL:       "False"
+      ZVM_HOST:         ${ZVM_HOST}
+      ZVM_PORT:         "443"
+      ZVM_USERNAME:     ${ZVM_USERNAME}
+      ZVM_PASSWORD:     ${ZVM_PASSWORD}
+      SCRAPE_SPEED:     "20"
+      CLIENT_ID:        ${ZVM_CLIENT_ID:-api-script}
+      CLIENT_SECRET:    ${ZVM_CLIENT_SECRET}
+      LOGLEVEL:         INFO
+      VCENTER_HOST:     ${VCENTER_HOST:-}
+      VCENTER_USER:     ${VCENTER_USER:-administrator@vsphere.local}
+      VCENTER_PASSWORD: ${VCENTER_PASSWORD:-}
     networks:
       - back-tier
-    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9999/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional second ZVM/vCenter site — uncomment and set ZVM2_* env vars
+  # zertoexporter2:
+  #   image: recklessop/zerto-exporter:stable
+  #   container_name: zvmexporter2
+  #   hostname: zvmexporter2
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9998:9999"
+  #   volumes:
+  #     - ./zvmexporter:/usr/src/app/logs
+  #   environment:
+  #     VERIFY_SSL:    "False"
+  #     ZVM_HOST:      ${ZVM2_HOST}
+  #     ZVM_PORT:      "443"
+  #     ZVM_USERNAME:  ${ZVM2_USERNAME}
+  #     ZVM_PASSWORD:  ${ZVM2_PASSWORD}
+  #     SCRAPE_SPEED:  "20"
+  #     LOGLEVEL:      INFO
+  #   networks:
+  #     - back-tier
+
+  # ── Metrics — Prometheus ──────────────────────────────────────────────────
+  zroc-prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: zroc-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=20GB
+      - --web.listen-address=0.0.0.0:9090
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    networks:
+      - back-tier
     depends_on:
       - zertoexporter
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
+  # ── Dashboards — Grafana ──────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:10.4.2
+    container_name: zroc-grafana
+    restart: unless-stopped
     user: "472"
-    depends_on:
-      - prometheus
     ports:
-      - 3000:3000
+      - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=zertodata
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - data-source-url=http://prometheus:9090
-      - name=Prometheus
-      - type=prometheus
-      - update-interval=10
+      GF_SECURITY_ADMIN_PASSWORD:          ${GRAFANA_PASSWORD:-zertodata}
+      GF_USERS_ALLOW_SIGN_UP:              "false"
+      GF_SERVER_ROOT_URL:                  "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_AUTH_GENERIC_OAUTH_ENABLED:       ${GRAFANA_OIDC_ENABLED:-false}
+      GF_AUTH_GENERIC_OAUTH_NAME:          Authentik
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID:     ${GRAFANA_CLIENT_ID:-}
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_CLIENT_SECRET:-}
+      GF_AUTH_GENERIC_OAUTH_SCOPES:        openid profile email
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL:      ${PUBLIC_URL:-}/auth/application/o/authorize/
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL:     http://authentik-server:9000/application/o/token/
+      GF_AUTH_GENERIC_OAUTH_API_URL:       http://authentik-server:9000/application/o/userinfo/
     networks:
       - back-tier
       - front-tier
-    restart: always
+    depends_on:
+      - zroc-prometheus
 
+  # ── Auto-updates — Watchtower ─────────────────────────────────────────────
   watchtower:
     image: containrrr/watchtower
+    container_name: zroc-watchtower
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - WATCHTOWER_POLL_INTERVAL=360 # 1 hour
-    restart: always
+      WATCHTOWER_POLL_INTERVAL: "3600"
+      WATCHTOWER_CLEANUP:       "true"
+      WATCHTOWER_INCLUDE_STOPPED: "false"
+    command: --label-enable

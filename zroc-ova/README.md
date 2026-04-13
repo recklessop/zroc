@@ -1,11 +1,11 @@
 # zroc-ova — zROC Appliance Builder
 
-Packer build definitions and provisioner scripts for the **zROC Ubuntu 26.04 LTS OVA appliance**.
+Packer build definitions and provisioner scripts for the **zROC Ubuntu 24.04 LTS OVA appliance**.
 
 ## What you get
 
 A 100 GB thin-provisioned VMware OVA containing:
-- Ubuntu Server 26.04 LTS
+- Ubuntu Server 24.04 LTS
 - Docker Engine + Compose plugin
 - Full zROC stack (cloned from recklessop/zroc)
 - Interactive first-boot setup wizard (`zroc-setup`)
