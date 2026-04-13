@@ -62,12 +62,12 @@ source "qemu" "ubuntu2404" {
   http_directory   = "http"
   http_port_min    = 8100
   http_port_max    = 8199
-  boot_wait        = "5s"
+  boot_wait        = "10s"
   boot_command = [
-    "e<wait>",
+    "e<wait3s>",
     "<down><down><down><end>",
-    " autoinstall ds=nocloud-net;seedfrom=http://{{.HTTPIP}}:{{.HTTPPort}}/",
-    "<f10><wait60s>",
+    " autoinstall ds=nocloud-net\\;s=http://{{.HTTPIP}}:{{.HTTPPort}}/",
+    "<f10>",
   ]
   ssh_username     = "zroc"
   ssh_password     = "zroc-setup-temp"
@@ -81,9 +81,14 @@ build {
   sources = ["source.qemu.ubuntu2404"]
 
   # Copy overlay files (setup wizard binary, etc.) into the VM
+  # Create destination first, then upload overlay contents
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/overlays"]
+  }
+
   provisioner "file" {
     source      = "../overlays/"
-    destination = "/tmp/overlays/"
+    destination = "/tmp/overlays"
   }
 
   provisioner "shell" {

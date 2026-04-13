@@ -56,7 +56,7 @@ autoinstall:
   identity:
     hostname: zroc-appliance
     username: zroc
-    password: "$6$rounds=4096$packer$xKDMK6dLB2.8PZnJnXGpYQ9o0CWbEe4s7T5JY3bVq1ZQ2RQ6y7dAjH4wqpVLBkHPHU/CuW7.8SsLQ6TYe1"
+    password: "$6$packer$gwlQZBIqCQJgsuatoEA7pHxI3qdmXPR/PHH6s8Nw8LTKz.OABa.LAU9JvGKcXPKjxNOIVRoKMVNNjMJyIWKM30"
 
   ssh:
     install-server: true
