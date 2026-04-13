@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/auth/AuthContext';
+import { ThemeProvider } from '@/auth/ThemeContext';
 import { ProtectedRoute, AdminRoute } from '@/auth/ProtectedRoute';
 import AppShell       from '@/components/layout/AppShell';
 import Overview       from '@/pages/Overview';
@@ -12,6 +13,7 @@ import Storage        from '@/pages/Storage';
 import UserManagement from '@/pages/Settings/UserManagement';
 import VMDetail       from '@/pages/VMDetail';
 import Placeholder    from '@/pages/Placeholder';
+import Planner        from '@/pages/Planner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +28,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -36,6 +39,7 @@ export default function App() {
               <Route path="vras"       element={<VRADashboard />} />
               <Route path="encryption" element={<EncryptionPage />} />
               <Route path="storage"    element={<Storage />} />
+              <Route path="planner"   element={<Planner />} />
               <Route path="settings">
                 <Route index element={<Navigate to="users" replace />} />
                 <Route path="users" element={
@@ -47,6 +51,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

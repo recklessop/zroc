@@ -3,6 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens (space-separated RGB for Tailwind opacity support) ── */
+:root,
+[data-theme="dark"] {
+  --color-canvas:         8 13 26;
+  --color-surface:        13 21 38;
+  --color-raised:         19 31 53;
+  --color-border:         30 45 71;
+  --color-border-bright:  42 64 102;
+  --color-text-primary:   226 232 240;
+  --color-text-secondary: 124 147 181;
+  --color-text-muted:     74 96 128;
+}
+
+[data-theme="light"] {
+  --color-canvas:         240 244 248;
+  --color-surface:        255 255 255;
+  --color-raised:         248 250 252;
+  --color-border:         226 232 240;
+  --color-border-bright:  203 213 225;
+  --color-text-primary:   15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-muted:     148 163 184;
+}
+
 @layer base {
   html { @apply scroll-smooth; }
 

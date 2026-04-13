@@ -5,11 +5,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas:  '#080d1a',
-        surface: '#0d1526',
-        raised:  '#131f35',
-        border:  '#1e2d47',
-        'border-bright': '#2a4066',
+        canvas:  'rgb(var(--color-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        raised:  'rgb(var(--color-raised) / <alpha-value>)',
+        border:  'rgb(var(--color-border) / <alpha-value>)',
+        'border-bright': 'rgb(var(--color-border-bright) / <alpha-value>)',
         accent: {
           DEFAULT: '#0ea5e9',
           dim:     '#0284c7',
@@ -20,9 +20,9 @@ export default {
         warn:    '#f59e0b',
         crit:    '#ef4444',
         info:    '#818cf8',
-        'text-primary':   '#e2e8f0',
-        'text-secondary': '#7c93b5',
-        'text-muted':     '#4a6080',
+        'text-primary':   'rgb(var(--color-text-primary) / <alpha-value>)',
+        'text-secondary': 'rgb(var(--color-text-secondary) / <alpha-value>)',
+        'text-muted':     'rgb(var(--color-text-muted) / <alpha-value>)',
       },
       fontFamily: {
         mono:  ['"IBM Plex Mono"', 'monospace'],

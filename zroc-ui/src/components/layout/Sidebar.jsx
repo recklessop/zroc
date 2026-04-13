@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, GitFork, Server, Cpu,
   ShieldAlert, Database, Settings, ChevronLeft,
-  ChevronRight, Activity,
+  ChevronRight, Activity, Calculator,
 } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import clsx from 'clsx';
@@ -41,6 +41,7 @@ const NAV_ITEMS = [
   { to: '/vras',       label: 'VRAs',       icon: Cpu        },
   { to: '/encryption', label: 'Encryption', icon: ShieldAlert },
   { to: '/storage',    label: 'Storage',    icon: Database   },
+  { to: '/planner',    label: 'Planner',    icon: Calculator },
 ];
 
 const ADMIN_ITEMS = [

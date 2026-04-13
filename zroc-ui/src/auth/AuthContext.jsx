@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const checkSession = useCallback(async () => {
+    if (import.meta.env.VITE_MOCK_AUTH === 'true') {
+      setUser({ name: 'Demo User', email: 'demo@zroc.local', role: 'admin' });
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/auth/status', { credentials: 'include' });
       if (res.ok) {

@@ -1,8 +1,9 @@
 // src/components/layout/TopBar.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Menu, RefreshCw, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, RefreshCw, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
+import { useTheme } from '@/auth/ThemeContext';
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 
@@ -13,6 +14,7 @@ const PAGE_TITLES = {
   '/vras':             'VRA Infrastructure',
   '/encryption':       'Encryption Detection',
   '/storage':          'Storage & Datastores',
+  '/planner':          'DR Capacity Planner',
   '/settings/users':   'User Management',
   '/settings':         'Settings',
 };
@@ -64,6 +66,7 @@ function UserMenu({ user, onLogout }) {
 
 export default function TopBar({ sidebarOpen, onMenuToggle }) {
   const { user, logout }  = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const location          = useLocation();
   const queryClient       = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +93,10 @@ export default function TopBar({ sidebarOpen, onMenuToggle }) {
         <button onClick={handleRefresh} title="Refresh all data"
           className="p-1.5 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-all duration-150">
           <RefreshCw size={14} className={clsx(refreshing && 'animate-spin text-accent')} />
+        </button>
+        <button onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="p-1.5 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-all duration-150">
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
         {user && <UserMenu user={user} onLogout={logout} />}
       </div>
